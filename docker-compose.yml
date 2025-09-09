@@ -1,0 +1,10 @@
+services:
+  mastodon-rss-bot:
+    build: .
+    container_name: mastodon-rss-bot
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - TZ=${TIMEZONE:-Europe/Madrid}
+    volumes:
+      - ./data:/app/data     # persistent state folder

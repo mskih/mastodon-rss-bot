@@ -1,0 +1,22 @@
+{
+  "name": "agent-oracle",
+  "version": "1.2.0",
+  "description": "Mastodon bot that posts RSS items daily (Mon–Sat) and replies to mentions based on keywords, with de-duplication and once-per-mention behavior.",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "he": "^1.2.0",
+    "masto": "^6.0.0",
+    "node-cron": "^3.0.3",
+    "rss-parser": "^3.13.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "ISC",
+  "author": "you"
+}
