@@ -4,7 +4,7 @@ services:
     container_name: mastodon-rss-bot
     restart: unless-stopped
     env_file: .env
-    network_mode: "host"     # share host networking (VPN-friendly)
+    network_mode: "host"      # share host VPN/DNS/routes
     environment:
       - TZ=${TIMEZONE:-Europe/Madrid}
     volumes:

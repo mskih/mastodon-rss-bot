@@ -1,12 +1,12 @@
 FROM node:20-alpine
 WORKDIR /app
 
-# Base packages + CA + timezone
-RUN apk add --no-cache ca-certificates tzdata && update-ca-certificates
+# Base packages + CA + timezone + su-exec (to drop privileges)
+RUN apk add --no-cache ca-certificates tzdata su-exec && update-ca-certificates
 
 # Copy manifests first (better cache)
 COPY package.json ./
-# If you have a lockfile, uncomment the next line and prefer npm ci
+# If you have a lockfile, prefer ci (uncomment next line and swap the npm line)
 # COPY package-lock.json ./
 
 # Install deps
@@ -17,17 +17,23 @@ RUN npm install --omit=dev
 # Copy the app code
 COPY . .
 
-# Create data dir and ensure ownership for non-root user
+# Create runtime data dir
 RUN mkdir -p /app/data
 
-# Non-root user
-RUN addgroup -S app && adduser -S app -G app \
-  && chown -R app:app /app
+# Create non-root user
+RUN addgroup -S app && adduser -S app -G app
 
-USER app
+# Ensure app owns its code dir (harmless if already owned)
+RUN chown -R app:app /app
+
+# Use an entrypoint that fixes /app/data perms then drops to 'app'
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+# Stay root for the chown step in entrypoint
+USER root
 ENV NODE_ENV=production
 
-# Persist only the data directory; code lives in the image
 VOLUME ["/app/data"]
 
-CMD ["npm", "start"]
+ENTRYPOINT ["/app/entrypoint.sh"]
