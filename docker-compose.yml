@@ -4,7 +4,8 @@ services:
     container_name: mastodon-rss-bot
     restart: unless-stopped
     env_file: .env
+    network_mode: "host"
     environment:
       - TZ=${TIMEZONE:-Europe/Madrid}
     volumes:
-      - ./data:/app/data     # persistent state folder
+      - ./state.json:/app/state.json
