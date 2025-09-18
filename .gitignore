@@ -7,3 +7,8 @@ data/
 
 # misc
 npm-debug.log*
+
+# State directory (keep the folder, ignore contents except placeholder)
+d
+data/*
+!data/.gitkeep
