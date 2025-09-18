@@ -2,11 +2,8 @@ import { masto } from './mastoClient.js';
 import { FEEDS } from './feeds.js';
 import { stripHtmlToText } from './rss.js';
 import { chooseItem, getItemId, recordPosted } from './dedup.js';
-import { buildReplyFromItem, postStatus } from './posting.js';
-import {
-  getState, updateState,
-  hasProcessedNotification, markNotificationProcessed
-} from './state.js';
+import { buildStatusFromItem, postStatus } from './posting.js';
+import { getState, markNotificationProcessed } from './state.js';
 
 export async function checkMentions() {
   try {
@@ -20,39 +17,40 @@ export async function checkMentions() {
     let maxId = s.lastNotificationId;
 
     for (const n of notes) {
-      if (hasProcessedNotification(n.id)) continue;
-
-      if (n.id && (!maxId || BigInt(n.id) > BigInt(maxId))) maxId = n.id;
+      // track highest notification id we saw this poll
+      if (n.id && (!maxId || BigInt(n.id) > BigInt(maxId))) {
+        maxId = n.id;
+      }
 
       const text = stripHtmlToText(n.status?.content || '');
       const acct = n.account?.acct || '';
-      const displayName = n.account?.displayName || n.account?.username || acct;
 
+      // find first matching keyword in the mention text
       const lower = text.toLowerCase();
       const match = Object.entries(FEEDS).find(([kw]) => lower.includes(kw));
-
-      // Mark as processed even if no keyword, so we don't loop on it
-      if (!match) { markNotificationProcessed(n.id); continue; }
+      if (!match) {
+        console.log(`[Mentions] No keyword in: "${text}"`);
+        continue;
+      }
 
       const [, meta] = match; // { id, key, url }
-
       const item = await chooseItem(meta.url, meta.id);
-      if (!item) { markNotificationProcessed(n.id); continue; }
+      if (!item) {
+        console.warn(`[Mentions] No items for keyword ${meta.key} (${meta.url})`);
+        continue;
+      }
 
-      const status = buildReplyFromItem(item, { displayName, acct });
-      if (!status) { markNotificationProcessed(n.id); continue; }
+      const status = buildStatusFromItem(item);
+      if (!status) continue;
 
       await postStatus(status, { inReplyToId: n.status?.id, mentionAcct: acct });
       recordPosted(meta.id, getItemId(item));
-      markNotificationProcessed(n.id);
-
-      // Optional: also dismiss on server (needs write:notifications)
-      // try { await masto.v1.notifications.dismiss(n.id); } catch {}
       console.log(`[Mentions] Replied to @${acct} with ${meta.id}: ${item.link}`);
     }
 
+    // persist the highest processed notification id so we don't re-reply on restart
     if (maxId && maxId !== s.lastNotificationId) {
-      updateState(state => { state.lastNotificationId = maxId; });
+      markNotificationProcessed(maxId);
     }
   } catch (err) {
     console.error('[Mentions] Error:', err?.response?.data || err);
